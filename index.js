@@ -3,190 +3,152 @@ const app = express();
 
 app.use(express.json());
 
-// =========================
-// 🔧 HELPERS
-// =========================
-function cleanOutput(val) {
-  if (val === undefined || val === null) return "0";
-  return String(val).trim().replace(/\s+/g, ' ');
+function clean(val) {
+  return String(val).trim();
 }
 
-function formatNumber(num) {
-  return Number.isInteger(num)
-    ? String(num)
-    : parseFloat(num.toFixed(2)).toString();
-}
-
-function capitalize(name) {
-  return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
-}
-
-// =========================
-// 🚀 MAIN API
-// =========================
 app.post('/v1/answer', (req, res) => {
-  console.log("🔥 FINAL VERSION RUNNING");
+  let { query } = req.body;
+  if (!query) return res.json({ output: "" });
 
-  const { query } = req.body;
+  const original = query;
+  const q = query.toLowerCase();
 
-  if (!query || typeof query !== "string") {
-    return res.json({ output: "0" });
-  }
-
-  const clean = query
-    .replace(/[^\w\s+\-*/.]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  const q = clean.toLowerCase();
-  const numbers = clean.match(/-?\d+(\.\d+)?/g)?.map(Number) || [];
+  const numbers = (query.match(/-?\d+(\.\d+)?/g) || []).map(Number);
 
   // =========================
-  // 🎯 INTENTS
+  // 1. DATE
   // =========================
-  const isMax = q.includes("highest") || q.includes("maximum") || q.includes("largest") || q.includes("top");
-  const isMin = q.includes("lowest") || q.includes("minimum") || q.includes("smallest");
-
-  const isAdd = q.includes("add") || q.includes("plus") || q.includes("sum") || query.includes("+");
-  const isSubtract = q.includes("subtract") || q.includes("minus") || query.includes("-");
-  const isMultiply = q.includes("multiply") || q.includes("product") || query.includes("*");
-  const isDivide = q.includes("divide") || query.includes("/");
-  const isAverage = q.includes("average") || q.includes("mean");
-
-  const isEvenSum = q.includes("even") && q.includes("sum");
-  const isOdd = q.includes("odd");
-  const isEven = q.includes("even") && !q.includes("sum");
-
-  const isDifference = q.includes("difference");
-  const isCountWords = q.includes("count") || q.includes("how many words");
-  const isSort = q.includes("sort");
-
-  // =========================
-  // 🥇 1. NAME + SCORE
-  // =========================
-  const pairs = [...query.matchAll(/([A-Za-z]+)\s+(?:scored|got|has|runs|marks|points)?\s*(\d+)/gi)];
-
-  if (isMax && pairs.length >= 2) {
-    let max = -Infinity;
-    let winner = "";
-
-    for (const p of pairs) {
-      const name = p[1];
-      const score = Number(p[2]);
-
-      if (!isNaN(score) && score > max) {
-        max = score;
-        winner = name;
-      }
-    }
-
-    if (winner) {
-      return res.json({ output: capitalize(winner) });
-    }
-  }
-
-  // =========================
-  // 📅 DATE
-  // =========================
-  const dateMatch = query.match(/\d{1,2}\s+[A-Za-z]+\s+\d{4}/);
+  const dateMatch = original.match(/\d{1,2}\s+[A-Za-z]+\s+\d{4}/);
   if (dateMatch) {
-    return res.json({ output: cleanOutput(dateMatch[0]) });
+    return res.json({ output: clean(dateMatch[0]) });
   }
 
   // =========================
-  // 🔢 SUM EVEN
+  // 2. ODD / EVEN
   // =========================
-  if (isEvenSum && numbers.length > 0) {
-    const result = numbers.filter(n => n % 2 === 0).reduce((a, b) => a + b, 0);
-    return res.json({ output: cleanOutput(result) });
+  if (numbers.length > 0) {
+    if (q.includes("odd")) {
+      return res.json({ output: numbers[0] % 2 !== 0 ? "YES" : "NO" });
+    }
+    if (q.includes("even") && !q.includes("sum")) {
+      return res.json({ output: numbers[0] % 2 === 0 ? "YES" : "NO" });
+    }
   }
 
   // =========================
-  // ➕ ADD
+  // 3. SUM EVEN
   // =========================
-  if (isAdd && numbers.length >= 2) {
-    return res.json({ output: cleanOutput(numbers.reduce((a, b) => a + b, 0)) });
+  if (q.includes("sum") && q.includes("even")) {
+    const result = numbers.filter(n => n % 2 === 0).reduce((a,b)=>a+b,0);
+    return res.json({ output: clean(result) });
   }
 
   // =========================
-  // ➖ SUBTRACT
+  // 4. ADD
   // =========================
-  if (isSubtract && numbers.length >= 2) {
+  if (q.includes("add") || q.includes("plus") || original.includes("+")) {
+    return res.json({ output: clean(numbers.reduce((a,b)=>a+b,0)) });
+  }
+
+  // =========================
+  // 5. SUBTRACT
+  // =========================
+  if (q.includes("subtract") || q.includes("minus") || original.includes("-")) {
     const result = q.includes("from")
       ? numbers[1] - numbers[0]
       : numbers[0] - numbers[1];
-    return res.json({ output: cleanOutput(result) });
+    return res.json({ output: clean(result) });
   }
 
   // =========================
-  // 🔄 DIFFERENCE
+  // 6. MULTIPLY
   // =========================
-  if (isDifference && numbers.length >= 2) {
-    return res.json({ output: cleanOutput(Math.abs(numbers[0] - numbers[1])) });
+  if (q.includes("multiply") || q.includes("product") || original.includes("*")) {
+    return res.json({ output: clean(numbers.reduce((a,b)=>a*b,1)) });
   }
 
   // =========================
-  // ✖️ MULTIPLY
+  // 7. DIVIDE
   // =========================
-  if (isMultiply && numbers.length >= 2) {
-    return res.json({ output: cleanOutput(numbers.reduce((a, b) => a * b, 1)) });
+  if (q.includes("divide") || original.includes("/")) {
+    const result = numbers[0] / numbers[1];
+    return res.json({ output: clean(Number.isInteger(result) ? result : parseFloat(result.toFixed(2))) });
   }
 
   // =========================
-  // ➗ DIVIDE
+  // 8. AVERAGE
   // =========================
-  if (isDivide && numbers.length >= 2 && numbers[1] !== 0) {
-    return res.json({ output: cleanOutput(formatNumber(numbers[0] / numbers[1])) });
+  if (q.includes("average") || q.includes("mean")) {
+    const avg = numbers.reduce((a,b)=>a+b,0)/numbers.length;
+    return res.json({ output: clean(Number.isInteger(avg) ? avg : parseFloat(avg.toFixed(2))) });
   }
 
   // =========================
-  // 📊 AVERAGE
+  // 9. DIFFERENCE
   // =========================
-  if (isAverage && numbers.length > 0) {
-    const avg = numbers.reduce((a, b) => a + b, 0) / numbers.length;
-    return res.json({ output: cleanOutput(formatNumber(avg)) });
+  if (q.includes("difference")) {
+    return res.json({ output: clean(Math.abs(numbers[0] - numbers[1])) });
   }
 
   // =========================
-  // 🔢 MAX / MIN
+  // 10. MAX (NUMBER)
   // =========================
-  if (numbers.length > 0) {
-    if (isMax) return res.json({ output: cleanOutput(Math.max(...numbers)) });
-    if (isMin) return res.json({ output: cleanOutput(Math.min(...numbers)) });
+  if (q.includes("highest") || q.includes("maximum") || q.includes("largest")) {
+    const pairs = [...original.matchAll(/([A-Za-z]+)[^\d]*(\d+)/g)];
+
+    if (pairs.length >= 2) {
+      let max = -Infinity;
+      let winner = "";
+
+      for (const p of pairs) {
+        const name = p[1];
+        const score = Number(p[2]);
+
+        if (score > max) {
+          max = score;
+          winner = name;
+        }
+      }
+
+      return res.json({ output: clean(winner) });
+    }
+
+    return res.json({ output: clean(Math.max(...numbers)) });
   }
 
   // =========================
-  // 🔍 ODD / EVEN
+  // 11. MIN
   // =========================
-  if (numbers.length > 0) {
-    const num = numbers[0];
-
-    if (isOdd) return res.json({ output: num % 2 !== 0 ? "YES" : "NO" });
-    if (isEven) return res.json({ output: num % 2 === 0 ? "YES" : "NO" });
+  if (q.includes("lowest") || q.includes("minimum") || q.includes("smallest")) {
+    return res.json({ output: clean(Math.min(...numbers)) });
   }
 
   // =========================
-  // 🔤 WORD COUNT
+  // 12. SORT
   // =========================
-  if (isCountWords) {
-    const words = clean.split(" ").filter(w => isNaN(w) && w.length > 0);
-    return res.json({ output: cleanOutput(words.length) });
+  if (q.includes("sort")) {
+    return res.json({ output: clean(numbers.sort((a,b)=>a-b).join(" ")) });
   }
 
   // =========================
-  // 🔃 SORT
+  // 13. WORD COUNT
   // =========================
-  if (isSort && numbers.length > 0) {
-    return res.json({ output: cleanOutput(numbers.sort((a, b) => a - b).join(" ")) });
+  if (q.includes("count") && q.includes("word")) {
+    const words = q.split(" ").filter(w => isNaN(w));
+    return res.json({ output: clean(words.length) });
   }
 
   // =========================
-  // 🔒 FALLBACK
+  // FINAL FALLBACK
   // =========================
-  return res.json({ output: "0" });
+  return res.json({ output: "" });
 });
 
-// =========================
 const PORT = process.env.PORT || 3000;
-console.log("🔥 VERSION CHECK 123");
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+
+console.log("🔥 FINAL VERSION DEPLOYED");
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
