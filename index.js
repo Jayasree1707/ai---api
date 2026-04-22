@@ -8,6 +8,8 @@ function clean(val) {
 }
 
 app.post('/v1/answer', (req, res) => {
+  console.log("🔥 NEW VERSION HIT");   // 👈 ADD THIS LINE HERE
+
   let { query } = req.body;
   if (!query) return res.json({ output: "" });
 
