@@ -68,6 +68,32 @@ app.post('/v1/answer', (req, res) => {
   }
 
   // =========================
+  // ✅ 5. HIGHEST SCORE
+  // =========================
+  if (q.includes("scored") && q.includes("highest")) {
+    const matches = [...query.matchAll(/([A-Za-z]+)\s+scored\s+(\d+)/g)];
+
+    if (matches.length > 0) {
+      let maxName = "";
+      let maxScore = -Infinity;
+
+      matches.forEach(match => {
+        const name = match[1];
+        const score = Number(match[2]);
+
+        if (score > maxScore) {
+          maxScore = score;
+          maxName = name;
+        }
+      });
+
+      return res.json({
+        output: maxName
+      });
+    }
+  }
+
+  // =========================
   // ❌ DEFAULT
   // =========================
   return res.json({
