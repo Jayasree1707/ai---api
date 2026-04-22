@@ -4,7 +4,7 @@ const app = express();
 app.use(express.json());
 
 // =========================
-// 🔥 HELPERS
+// 🔧 HELPERS
 // =========================
 function cleanOutput(val) {
   if (val === undefined || val === null) return "0";
@@ -22,51 +22,47 @@ function capitalize(name) {
 }
 
 // =========================
-// 🚀 MAIN ENDPOINT
+// 🚀 MAIN API
 // =========================
 app.post('/v1/answer', (req, res) => {
-  console.log("🔥 FINAL 93 VERSION RUNNING");
+  console.log("🔥 FINAL VERSION RUNNING");
 
-  let { query } = req.body;
+  const { query } = req.body;
+
   if (!query || typeof query !== "string") {
     return res.json({ output: "0" });
   }
 
-  // =========================
-  // 🔥 NORMALIZATION
-  // =========================
   const clean = query
     .replace(/[^\w\s+\-*/.]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 
   const q = clean.toLowerCase();
-
   const numbers = clean.match(/-?\d+(\.\d+)?/g)?.map(Number) || [];
 
   // =========================
   // 🎯 INTENTS
   // =========================
+  const isMax = q.includes("highest") || q.includes("maximum") || q.includes("largest") || q.includes("top");
+  const isMin = q.includes("lowest") || q.includes("minimum") || q.includes("smallest");
+
   const isAdd = q.includes("add") || q.includes("plus") || q.includes("sum") || query.includes("+");
   const isSubtract = q.includes("subtract") || q.includes("minus") || query.includes("-");
   const isMultiply = q.includes("multiply") || q.includes("product") || query.includes("*");
   const isDivide = q.includes("divide") || query.includes("/");
   const isAverage = q.includes("average") || q.includes("mean");
 
-  const isMax = q.includes("highest") || q.includes("maximum") || q.includes("largest") || q.includes("top");
-  const isMin = q.includes("lowest") || q.includes("minimum") || q.includes("smallest");
-
-  const isDifference = q.includes("difference");
-
   const isEvenSum = q.includes("even") && q.includes("sum");
   const isOdd = q.includes("odd");
   const isEven = q.includes("even") && !q.includes("sum");
 
-  const isSort = q.includes("sort");
+  const isDifference = q.includes("difference");
   const isCountWords = q.includes("count") || q.includes("how many words");
+  const isSort = q.includes("sort");
 
   // =========================
-  // 🥇 1. NAME + SCORE (TOP PRIORITY)
+  // 🥇 1. NAME + SCORE
   // =========================
   const pairs = [...query.matchAll(/([A-Za-z]+)\s+(?:scored|got|has|runs|marks|points)?\s*(\d+)/gi)];
 
@@ -85,12 +81,12 @@ app.post('/v1/answer', (req, res) => {
     }
 
     if (winner) {
-      return res.json({ output: capitalize(winner.trim()) });
+      return res.json({ output: capitalize(winner) });
     }
   }
 
   // =========================
-  // 📅 2. DATE EXTRACTION
+  // 📅 DATE
   // =========================
   const dateMatch = query.match(/\d{1,2}\s+[A-Za-z]+\s+\d{4}/);
   if (dateMatch) {
@@ -98,22 +94,22 @@ app.post('/v1/answer', (req, res) => {
   }
 
   // =========================
-  // 🔢 3. SUM EVEN NUMBERS
+  // 🔢 SUM EVEN
   // =========================
   if (isEvenSum && numbers.length > 0) {
-    const sum = numbers.filter(n => n % 2 === 0).reduce((a, b) => a + b, 0);
-    return res.json({ output: cleanOutput(sum) });
+    const result = numbers.filter(n => n % 2 === 0).reduce((a, b) => a + b, 0);
+    return res.json({ output: cleanOutput(result) });
   }
 
   // =========================
-  // ➕ 4. ADDITION
+  // ➕ ADD
   // =========================
   if (isAdd && numbers.length >= 2) {
     return res.json({ output: cleanOutput(numbers.reduce((a, b) => a + b, 0)) });
   }
 
   // =========================
-  // ➖ 5. SUBTRACTION
+  // ➖ SUBTRACT
   // =========================
   if (isSubtract && numbers.length >= 2) {
     const result = q.includes("from")
@@ -123,28 +119,28 @@ app.post('/v1/answer', (req, res) => {
   }
 
   // =========================
-  // 🔄 6. DIFFERENCE
+  // 🔄 DIFFERENCE
   // =========================
   if (isDifference && numbers.length >= 2) {
     return res.json({ output: cleanOutput(Math.abs(numbers[0] - numbers[1])) });
   }
 
   // =========================
-  // ✖️ 7. MULTIPLICATION
+  // ✖️ MULTIPLY
   // =========================
   if (isMultiply && numbers.length >= 2) {
     return res.json({ output: cleanOutput(numbers.reduce((a, b) => a * b, 1)) });
   }
 
   // =========================
-  // ➗ 8. DIVISION
+  // ➗ DIVIDE
   // =========================
   if (isDivide && numbers.length >= 2 && numbers[1] !== 0) {
     return res.json({ output: cleanOutput(formatNumber(numbers[0] / numbers[1])) });
   }
 
   // =========================
-  // 📊 9. AVERAGE
+  // 📊 AVERAGE
   // =========================
   if (isAverage && numbers.length > 0) {
     const avg = numbers.reduce((a, b) => a + b, 0) / numbers.length;
@@ -152,7 +148,7 @@ app.post('/v1/answer', (req, res) => {
   }
 
   // =========================
-  // 🔍 10. MAX / MIN NUMBER
+  // 🔢 MAX / MIN
   // =========================
   if (numbers.length > 0) {
     if (isMax) return res.json({ output: cleanOutput(Math.max(...numbers)) });
@@ -160,22 +156,17 @@ app.post('/v1/answer', (req, res) => {
   }
 
   // =========================
-  // 🔢 11. ODD / EVEN CHECK
+  // 🔍 ODD / EVEN
   // =========================
   if (numbers.length > 0) {
     const num = numbers[0];
 
-    if (isOdd) {
-      return res.json({ output: num % 2 !== 0 ? "YES" : "NO" });
-    }
-
-    if (isEven) {
-      return res.json({ output: num % 2 === 0 ? "YES" : "NO" });
-    }
+    if (isOdd) return res.json({ output: num % 2 !== 0 ? "YES" : "NO" });
+    if (isEven) return res.json({ output: num % 2 === 0 ? "YES" : "NO" });
   }
 
   // =========================
-  // 🔤 12. WORD COUNT
+  // 🔤 WORD COUNT
   // =========================
   if (isCountWords) {
     const words = clean.split(" ").filter(w => isNaN(w) && w.length > 0);
@@ -183,23 +174,18 @@ app.post('/v1/answer', (req, res) => {
   }
 
   // =========================
-  // 🔃 13. SORT
+  // 🔃 SORT
   // =========================
   if (isSort && numbers.length > 0) {
-    const sorted = [...numbers].sort((a, b) => a - b);
-    return res.json({ output: cleanOutput(sorted.join(" ")) });
+    return res.json({ output: cleanOutput(numbers.sort((a, b) => a - b).join(" ")) });
   }
 
   // =========================
-  // 🔒 SAFE FALLBACK
+  // 🔒 FALLBACK
   // =========================
   return res.json({ output: "0" });
 });
 
 // =========================
-// 🚀 SERVER
-// =========================
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
