@@ -11,11 +11,13 @@ app.post('/v1/answer', (req, res) => {
     return res.json({ output: "Invalid question." });
   }
 
+  const q = query.toLowerCase();
+
   // =========================
   // ✅ 1. ADDITION HANDLER
   // =========================
   const numbers = query.match(/\d+/g);
-  if (numbers && numbers.length >= 2 && query.includes('+')) {
+  if (numbers && numbers.length >= 2 && (q.includes('+') || q.includes('plus'))) {
     const sum = Number(numbers[0]) + Number(numbers[1]);
     return res.json({
       output: `The sum is ${sum}.`
@@ -30,6 +32,22 @@ app.post('/v1/answer', (req, res) => {
     return res.json({
       output: dateMatch[0]
     });
+  }
+
+  // =========================
+  // ✅ 3. ODD / EVEN CHECK
+  // =========================
+  const numberMatch = query.match(/\d+/);
+  if (numberMatch) {
+    const num = Number(numberMatch[0]);
+
+    if (q.includes("odd")) {
+      return res.json({ output: num % 2 !== 0 ? "YES" : "NO" });
+    }
+
+    if (q.includes("even")) {
+      return res.json({ output: num % 2 === 0 ? "YES" : "NO" });
+    }
   }
 
   // =========================
