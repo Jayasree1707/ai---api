@@ -188,4 +188,5 @@ app.post('/v1/answer', (req, res) => {
 
 // =========================
 const PORT = process.env.PORT || 3000;
+console.log("🔥 VERSION CHECK 123");
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
