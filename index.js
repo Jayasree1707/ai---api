@@ -3,7 +3,6 @@ const app = express();
 
 app.use(express.json());
 
-// ✅ MAIN ENDPOINT
 app.post('/v1/answer', (req, res) => {
   const { query } = req.body;
 
@@ -14,7 +13,7 @@ app.post('/v1/answer', (req, res) => {
   const q = query.toLowerCase();
 
   // =========================
-  // ✅ 1. ADDITION HANDLER
+  // ✅ 1. ADDITION
   // =========================
   const numbers = query.match(/\d+/g);
   if (numbers && numbers.length >= 2 && (q.includes('+') || q.includes('plus'))) {
@@ -37,28 +36,46 @@ app.post('/v1/answer', (req, res) => {
   // =========================
   // ✅ 3. ODD / EVEN CHECK
   // =========================
-  const numberMatch = query.match(/\d+/);
-  if (numberMatch) {
-    const num = Number(numberMatch[0]);
+  const singleNumber = query.match(/\d+/);
+  if (singleNumber) {
+    const num = Number(singleNumber[0]);
 
     if (q.includes("odd")) {
       return res.json({ output: num % 2 !== 0 ? "YES" : "NO" });
     }
 
-    if (q.includes("even")) {
+    if (q.includes("even") && !q.includes("sum")) {
       return res.json({ output: num % 2 === 0 ? "YES" : "NO" });
     }
   }
 
   // =========================
-  // ❌ DEFAULT RESPONSE
+  // ✅ 4. SUM EVEN NUMBERS
+  // =========================
+  if (q.includes("sum") && q.includes("even")) {
+    const nums = query.match(/\d+/g);
+
+    if (nums) {
+      const sumEven = nums
+        .map(n => Number(n))
+        .filter(n => n % 2 === 0)
+        .reduce((a, b) => a + b, 0);
+
+      return res.json({
+        output: sumEven.toString()
+      });
+    }
+  }
+
+  // =========================
+  // ❌ DEFAULT
   // =========================
   return res.json({
     output: "Invalid question."
   });
 });
 
-// ✅ SERVER
+// SERVER
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
